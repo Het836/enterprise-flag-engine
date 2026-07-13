@@ -1,0 +1,176 @@
+openapi: 3.0.3
+info:
+  title: Enterprise Flag Engine API
+  version: 1.0.0
+  description: API contract for managing feature flags and environments.
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+
+paths:
+  /environments:
+    get:
+      summary: List all environments
+      description: Retrieves a list of all configured deployment environments (e.g., dev, staging, prod).
+      operationId: getEnvironments
+      tags:
+        - Environments
+      responses:
+        '200':
+          description: A JSON array of environments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Environment'
+
+  /flags:
+    get:
+      summary: List all feature flags
+      description: Retrieves a list of feature flags. Can be filtered by environment ID.
+      operationId: getFlags
+      tags:
+        - Feature Flags
+      parameters:
+        - name: environmentId
+          in: query
+          description: ID of the environment to filter flags by
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A JSON array of feature flags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FeatureFlag'
+
+    post:
+      summary: Create a new feature flag
+      description: Adds a new feature flag to a specific environment.
+      operationId: createFlag
+      tags:
+        - Feature Flags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureFlagCreateRequest'
+      responses:
+        '201':
+          description: Feature flag created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlag'
+        '400':
+          description: Invalid input data
+        '409':
+          description: Flag key already exists in the specified environment
+
+  /flags/{id}/toggle:
+    patch:
+      summary: Toggle a feature flag
+      description: Quickly flip a feature flag's 'is_enabled' status on or off.
+      operationId: toggleFlag
+      tags:
+        - Feature Flags
+      parameters:
+        - name: id
+          in: path
+          description: The database ID of the feature flag to toggle
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_enabled
+              properties:
+                is_enabled:
+                  type: boolean
+                  description: The new state of the flag
+      responses:
+        '200':
+          description: Flag toggled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlag'
+        '404':
+          description: Feature flag not found
+
+components:
+  schemas:
+    Environment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          example: production
+        description:
+          type: string
+          example: Live customer-facing environment
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    FeatureFlag:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        flag_key:
+          type: string
+          example: enable-new-checkout-flow
+        description:
+          type: string
+          example: Turns on the redesigned React checkout component
+        is_enabled:
+          type: boolean
+          example: false
+        environment_id:
+          type: integer
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    FeatureFlagCreateRequest:
+      type: object
+      required:
+        - flag_key
+        - environment_id
+      properties:
+        flag_key:
+          type: string
+          example: enable-beta-dashboard
+        description:
+          type: string
+          example: Enables the V2 dashboard layout for beta testers
+        is_enabled:
+          type: boolean
+          default: false
+        environment_id:
+          type: integer
+          example: 2
