@@ -1,0 +1,21 @@
+CREATE TABLE environments (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    api_key VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE feature_flags(
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    type VARCHAR(20) NOT NULL,
+    is_enable BOOLEAN NOT NULL DEFAULT FALSE,
+    targeting_rules JSONB NOT NULL DEFAULT '[]'::jsonb,
+    environment_id BIGINT REFERENCES environments(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_flags_environment ON feature_flags(environment_id);
