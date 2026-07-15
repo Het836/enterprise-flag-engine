@@ -1,4 +1,5 @@
 package com.enterprise.backend.service;
+import com.enterprise.backend.entity.FeatureFlag;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -27,20 +28,20 @@ public class FeatureFlagCacheService {
             redisTemplate.opsForValue().set(key, flagData, Duration.ofHours(24));
             System.out.println("Saved flag to Redis: " + key);
 
-            publisher.broadcastInvalidation(flagName);
+//            publisher.broadcastInvalidation(flagName);
         }catch (Exception e){
             System.err.println("Redis is down. Could not save L2 cache");
         }
     }
     @CircuitBreaker(name = "redisCache", fallbackMethod = "fallbackGetFlag")
     // Method to fetch a flag from Redis L2 Cache
-    public Object getFlagFromCache(String flagName) {
-        String key = CACHE_PREFIX + flagName;
-        return redisTemplate.opsForValue().get(key);
+    public FeatureFlag getFlagFromCache(String flagKey) {
+        String key = CACHE_PREFIX + flagKey;
+        return (FeatureFlag) redisTemplate.opsForValue().get(key);
     }
     // The Fallback Method (The Safety Net)
     // The signature must match the original method, but with an Exception parameter at the end.
-    public Object fallbackGetFlag(String flagName, Throwable throwable) {
+    public FeatureFlag fallbackGetFlag(String flagName, Throwable throwable) {
         System.err.println("🛡️ Circuit Breaker Tripped! Redis is unreachable. Bypassing L2 cache for: " + flagName);
 
         // TODO: In the final version, this is where you ask Track A's L1 Cache or PostgreSQL for the data.
