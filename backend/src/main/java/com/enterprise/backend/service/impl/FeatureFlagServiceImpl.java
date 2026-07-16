@@ -1,5 +1,6 @@
 package com.enterprise.backend.service.impl;
 
+import com.enterprise.backend.dto.FeatureFlagCreateRequest;
 import com.enterprise.backend.entity.FeatureFlag;
 import com.enterprise.backend.repository.FeatureFlagRepository;
 import com.enterprise.backend.rules.RuleEvaluator;
@@ -9,9 +10,11 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -52,8 +55,8 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
 
     @Cacheable(value = "featureFlags", key = "#flagKey", unless = "#result == null")
     public FeatureFlag getFlagConfiguration(String flagKey){
-//        log.info("L1 Cache Miss encountered for flag key: '{}'. Fetching state from PostgreSQL database...", flagKey);
-//        return featureFlagRepository.findByKey(flagKey).orElse(null);
+        //        log.info("L1 Cache Miss encountered for flag key: '{}'. Fetching state from PostgreSQL database...", flagKey);
+        //        return featureFlagRepository.findByKey(flagKey).orElse(null);
         // Tier 1: Local Caffeine RAM Cache Missed. Let's ask Tier 2: Redis
         try {
             FeatureFlag cachedFlag = (FeatureFlag) l2CacheService.getFlagFromCache(flagKey);
@@ -65,7 +68,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         }
 
         // Tier 3: Both L1 and L2 Missed. Fetch directly from PostgreSQL database
-        FeatureFlag dbFlag = flagRepository.findByKey(flagKey).orElse(null);
+        FeatureFlag dbFlag = flagRepository.findByFlagKey(flagKey).orElse(null);
 
         // Populate L2 Redis cache for other nodes to read next time
         if (dbFlag != null) {
@@ -76,11 +79,52 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
     }
 
     // This is the direct hook for your teammate's FlagInvalidationListener!
-    @Cacheable(value = "featureFlags", key = "#flagKey", unless = "#result == null")
+    @CacheEvict(value = "featureFlags", key = "#flagKey")
     public void evictLocalCache(String flagKey) {
-        org.springframework.cache.Cache localCache = cacheManager.getCache("flags");
-        if (localCache != null) {
-            localCache.evict(flagKey);
+        // This method is a hook for the teammate's FlagInvalidationListener.
+        // The actual eviction is handled by the @CacheEvict annotation above.
+    }
+
+    @Override
+    @Transactional
+    public FeatureFlag createFlag(FeatureFlagCreateRequest request) {
+        // Business Rule check: Make sure the key doesn't already exist globally/in environment
+        if (flagRepository.findByFlagKey(request.getFlagKey()).isPresent()) {
+            throw new IllegalArgumentException("Feature flag with key '" + request.getFlagKey() + "' already exists.");
         }
+
+        FeatureFlag flag = FeatureFlag.builder()
+                .flagKey(request.getFlagKey()) // Unified method call//                .name(request.getFlagKey().replace("-"," ").substring(0,1).toUpperCase() + request.getFlagKey().replace("-"," ").substring(1))
+                .description(request.getDescription())
+                .isEnabled(request.isEnabled())
+                .environmentId(request.getEnvironmentId())
+                .type("BOOLEAN") // <-- Make sure this line is explicitly present!
+                .targetingRules("[]")
+                .build();
+
+        return flagRepository.save(flag);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FeatureFlag> getFlags(Long environmentId) {
+        // Delegate to our dynamic JPQL filter query
+        return flagRepository.findByEnvironmentOptional(environmentId);
+    }
+
+    @Override
+    public FeatureFlag toggleFlag(Long flagId, boolean isEnabled) {
+        // 1. Locate the flag configuration row
+        FeatureFlag flag = flagRepository.findById(flagId)
+                .orElseThrow(() -> new IllegalArgumentException("Feature flag with ID " + flagId + " not found."));
+
+        // 2. Mutate the state toggle
+        flag.setIsEnabled(isEnabled);
+        FeatureFlag updatedFlag = flagRepository.save(flag);
+
+        // 3. Clear our High-Speed L1 Cache immediately so subsequent evaluations don't read stale data!
+        evictLocalCache(updatedFlag.getFlagKey());
+
+        return updatedFlag;
     }
 }
