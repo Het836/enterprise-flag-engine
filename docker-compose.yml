@@ -6,10 +6,10 @@ services:
     container_name: flag_engine_postgres
     environment:
       POSTGRES_DB: flag_engine
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "5439:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
