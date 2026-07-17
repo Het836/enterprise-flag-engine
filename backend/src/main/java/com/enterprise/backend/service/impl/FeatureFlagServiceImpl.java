@@ -25,7 +25,8 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
     private final FeatureFlagRepository flagRepository;
     private final RuleEvaluator ruleEvaluator;
     private final FeatureFlagCacheService l2CacheService; // Inject Track B's service
-    private final CacheManager cacheManager;             // Inject your Caffeine manager
+    private final CacheManager cacheManager;
+    private final FeatureFlagCacheService cacheService;// Inject your Caffeine manager
 
 
     @Override
@@ -102,7 +103,11 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
                 .targetingRules("[]")
                 .build();
 
-        return flagRepository.save(flag);
+        FeatureFlag savedFlag = flagRepository.save(flag);
+        cacheService.saveFlagToCache(savedFlag.getFlagKey(), savedFlag);
+        return savedFlag;
+//        return flagRepository.save(flag);
+
     }
 
     @Override
@@ -124,6 +129,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
 
         // 3. Clear our High-Speed L1 Cache immediately so subsequent evaluations don't read stale data!
         evictLocalCache(updatedFlag.getFlagKey());
+        cacheService.saveFlagToCache(updatedFlag.getFlagKey(), updatedFlag);
 
         return updatedFlag;
     }

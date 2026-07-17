@@ -1,23 +1,27 @@
     package com.enterprise.backend.service;
     import com.enterprise.backend.entity.FeatureFlag;
+    import com.enterprise.backend.repository.FeatureFlagRepository;
     import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+    import lombok.RequiredArgsConstructor;
     import org.springframework.data.redis.core.RedisTemplate;
     import org.springframework.stereotype.Service;
 
     import java.time.Duration;
 
     @Service
+    @RequiredArgsConstructor
     public class FeatureFlagCacheService {
         private final RedisTemplate<String, Object> redisTemplate;
         private final FeatureFlagPublisher publisher;
+        private final FeatureFlagRepository flagRepository;
 
         // We prefix our keys so they don't collide with anything else in Redis
         private static final String CACHE_PREFIX = "flag:";
 
-        public FeatureFlagCacheService(RedisTemplate<String, Object> redisTemplate, FeatureFlagPublisher publisher) {
-            this.redisTemplate = redisTemplate;
-            this.publisher = publisher;
-        }
+//        public FeatureFlagCacheService(RedisTemplate<String, Object> redisTemplate, FeatureFlagPublisher publisher) {
+//            this.redisTemplate = redisTemplate;
+//            this.publisher = publisher;
+//        }
 
         // Method to save a flag into Redis L2 Cache
         public void saveFlagToCache(String flagName, Object flagData) {
@@ -41,11 +45,11 @@
         }
         // The Fallback Method (The Safety Net)
         // The signature must match the original method, but with an Exception parameter at the end.
-        public FeatureFlag fallbackGetFlag(String flagName, Throwable throwable) {
-            System.err.println("🛡️ Circuit Breaker Tripped! Redis is unreachable. Bypassing L2 cache for: " + flagName);
+        public FeatureFlag fallbackGetFlag(String flagKey, Throwable throwable) {
+            System.err.println("🛡️ Circuit Breaker Tripped! Redis is unreachable. Bypassing L2 cache for: " + flagKey);
 
             // TODO: In the final version, this is where you ask Track A's L1 Cache or PostgreSQL for the data.
             // For now, we return null so the app doesn't crash.
-            return null;
+            return flagRepository.findByFlagKey(flagKey).orElse(null);
         }
     }

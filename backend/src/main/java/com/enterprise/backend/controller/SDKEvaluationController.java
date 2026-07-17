@@ -12,7 +12,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/sdk/eval")
 @RequiredArgsConstructor
 public class SDKEvaluationController {
-    private final SdkEvaluationServiceImpl evaluationService;
+    private final SDKEvaluationServiceImpl evaluationService;
 
     @PostMapping("/{flagKey}")
     public ResponseEntity<EvaluationResponse> evaluate(

@@ -11,5 +11,6 @@ import java.util.Map;
 @AllArgsConstructor
 public class EvaluationRequest {
     private String userId;
-    private Map<String, String> context;
+//    private Map<String, String> context;
+    private Map<String, Object> context;
 }
