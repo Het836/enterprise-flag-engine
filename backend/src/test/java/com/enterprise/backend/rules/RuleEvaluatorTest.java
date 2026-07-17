@@ -1,6 +1,5 @@
 package com.enterprise.backend.rules;
 
-import com.enterprise.backend.constant.RuleOperator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,12 +35,12 @@ class RuleEvaluatorTest {
             """;
 
         // When: An matching user profile payload comes in
-        Map<String, String> userContext = new HashMap<>();
+        Map<String, Object> userContext = new HashMap<>();
         userContext.put("plan", "PREMIUM");
         userContext.put("email", "het@adani.com");
 
         // Then: The engine must approve the flag evaluation
-        boolean result = ruleEvaluator.evaluteRules(targetingRuleJson, userContext);
+        boolean result = ruleEvaluator.evaluateRules(targetingRuleJson, userContext);
         assertTrue(result, "Evaluation should succeed when user matches constraints.");
     }
 
@@ -59,11 +58,11 @@ class RuleEvaluatorTest {
             """;
 
         // When: A user profile with a FREE plan evaluates
-        Map<String, String> userContext = new HashMap<>();
+        Map<String, Object> userContext = new HashMap<>();
         userContext.put("plan", "FREE");
 
         // Then: The engine must reject it and evaluate to false
-        boolean result = ruleEvaluator.evaluteRules(targetingRuleJson, userContext);
+        boolean result = ruleEvaluator.evaluateRules(targetingRuleJson, userContext);
         assertFalse(result, "Evaluation should fail when user does not match constraints.");
     }
 }

@@ -10,15 +10,15 @@ public record TargetingRuleConstraint(
         String value
 ) {
 //    Evaluates this specific constraint against the user's incoming context data map.
-    public boolean matches(java.util.Map<String, String> userContext){
+    public boolean matches(java.util.Map<String, Object> userContext){
         if (userContext == null || attribute == null || operator == null) {
             return false;
         }
 
         // Fetch what trait the user actually has for this attribute
-        String userValue = userContext.get(attribute);
+        Object userValue = userContext.get(attribute);
 
         // Delegate the actual mathematical/string comparison to our RuleOperator enum
-        return operator.evaluate(userValue, value);
+        return operator.evaluate((String) userValue, value);
     }
 }

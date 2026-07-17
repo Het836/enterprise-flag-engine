@@ -37,7 +37,7 @@ public class SDKEvaluationServiceImpl {
         }
 
         // 5. Rule Evaluation: Flag is ON, and rules exist. Let your stream logic decide.
-        boolean passesRules = ruleEvaluator.evaluteRules(rulesJson, request.getContext());
+        boolean passesRules = ruleEvaluator.evaluateRules(rulesJson, request.getContext());
 
         return buildResponse(flagKey, passesRules);
     }
