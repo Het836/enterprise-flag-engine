@@ -31,7 +31,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean evaluate(String flagKey, Map<String, String> userContext) {
+    public boolean evaluate(String flagKey, Map<String, Object> userContext) {
         // 1. Fetch the active state configuration of the target flag
         FeatureFlag flag = getFlagConfiguration(flagKey);
 
@@ -51,7 +51,7 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
         }
 
         // 4. Delegate to our highly optimized switch expression matrix for attribute matching
-        return ruleEvaluator.evaluteRules(flag.getTargetingRules(), userContext);
+        return ruleEvaluator.evaluateRules(flag.getTargetingRules(), userContext);
     }
 
     @Cacheable(value = "featureFlags", key = "#flagKey", unless = "#result == null")

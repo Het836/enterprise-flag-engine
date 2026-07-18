@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +15,7 @@ public class RuleEvaluator {
     private final ObjectMapper objectMapper;
 
 //    *valuates a collection of targeting rules against a user context map.
-    public boolean evaluteRules(String targetingRuleJson, Map<String,String> userContext){
+    public boolean evaluateRules(String targetingRuleJson, Map<String,Object> userContext){
         if (targetingRuleJson==null || targetingRuleJson.isBlank() || userContext==null){
             return false;
         }

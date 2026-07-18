@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface FeatureFlagService {
-    boolean evaluate(String key, Map<String, String> userContext);
+    boolean evaluate(String key, Map<String, Object> userContext);
 
     FeatureFlag createFlag(FeatureFlagCreateRequest request);
 
