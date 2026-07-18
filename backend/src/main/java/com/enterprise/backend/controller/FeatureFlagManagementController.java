@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class FeatureFlagManagementController {
     private final FeatureFlagService featureFlagService;
 
     // 1. GET /api/v1/flags (List all or filter by environment)
+//    @PreAuthorize("hasAnyRole('ADMIN', 'VIEWER')")
     @GetMapping
     public ResponseEntity<List<FeatureFlag>> getAllFlags(
             @RequestParam(value = "environmentId", required = false) Long environmentId) {
@@ -28,6 +30,7 @@ public class FeatureFlagManagementController {
     }
 
     // 2. POST /api/v1/flags (Create a brand-new flag config)
+//    @PreAuthorize("hasAnyRole('ADMIN')")
     @PostMapping
     public ResponseEntity<?> createFlag(@Valid @RequestBody FeatureFlagCreateRequest request) {
         try {
@@ -39,10 +42,14 @@ public class FeatureFlagManagementController {
     }
 
     // 3. PATCH /api/v1/flags/{id}/toggle (Flip an existing flag's state)
+//    @PreAuthorize("hasAnyRole('ADMIN')")
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<?> toggleFlag(
             @PathVariable("id") Long id,
             @RequestBody Map<String, Boolean> payload) {
+
+        System.out.println("👥 Current User Authorities: " +
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getAuthorities());
 
         if (!payload.containsKey("is_enabled")) {
             return ResponseEntity.badRequest().body(Map.of("error", "Missing required field: 'is_enabled'"));
