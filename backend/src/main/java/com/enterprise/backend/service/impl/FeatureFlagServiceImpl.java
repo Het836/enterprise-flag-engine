@@ -1,11 +1,14 @@
 package com.enterprise.backend.service.impl;
 
 import com.enterprise.backend.dto.FeatureFlagCreateRequest;
+import com.enterprise.backend.entity.AuditLog;
 import com.enterprise.backend.entity.FeatureFlag;
+import com.enterprise.backend.repository.AuditLogRepository;
 import com.enterprise.backend.repository.FeatureFlagRepository;
 import com.enterprise.backend.rules.RuleEvaluator;
 import com.enterprise.backend.service.FeatureFlagCacheService;
 import com.enterprise.backend.service.FeatureFlagService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
@@ -27,6 +30,8 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
     private final FeatureFlagCacheService l2CacheService; // Inject Track B's service
     private final CacheManager cacheManager;
     private final FeatureFlagCacheService cacheService;// Inject your Caffeine manager
+    private final AuditLogRepository auditLogRepository;
+    private final ObjectMapper objectMapper;
 
 
     @Override
@@ -105,6 +110,8 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
 
         FeatureFlag savedFlag = flagRepository.save(flag);
         cacheService.saveFlagToCache(savedFlag.getFlagKey(), savedFlag);
+        logAction(savedFlag.getFlagKey(), "CREATE", null, savedFlag);
+
         return savedFlag;
 //        return flagRepository.save(flag);
 
@@ -120,17 +127,51 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
     @Override
     public FeatureFlag toggleFlag(Long flagId, boolean isEnabled) {
         // 1. Locate the flag configuration row
-        FeatureFlag flag = flagRepository.findById(flagId)
+        FeatureFlag existingFlag = flagRepository.findById(flagId)
                 .orElseThrow(() -> new IllegalArgumentException("Feature flag with ID " + flagId + " not found."));
 
-        // 2. Mutate the state toggle
-        flag.setIsEnabled(isEnabled);
-        FeatureFlag updatedFlag = flagRepository.save(flag);
+        // 2. Clone/Serialize a snapshot of the current state *before* modification
+        String oldValueJson = serializeEntity(existingFlag);
 
-        // 3. Clear our High-Speed L1 Cache immediately so subsequent evaluations don't read stale data!
+        // 3. Apply the changes
+        existingFlag.setIsEnabled(isEnabled);
+        FeatureFlag updatedFlag = flagRepository.save(existingFlag);
+
         evictLocalCache(updatedFlag.getFlagKey());
+        // 4. Update the Redis cache cluster layer
         cacheService.saveFlagToCache(updatedFlag.getFlagKey(), updatedFlag);
 
+        // 5. Commit the differential changes to the audit ledger
+        logAction(updatedFlag.getFlagKey(), "TOGGLE", oldValueJson, updatedFlag);
+
         return updatedFlag;
+    }
+
+    // --- Helper Audit Utilities ---
+    private void logAction(String flagKey, String actionType, String preSerializedOldValue ,FeatureFlag newEntityState) {
+        try{
+            String newValueJson = serializeEntity(newEntityState);
+
+            AuditLog log = AuditLog.builder()
+                    .flagKey(flagKey)
+                    .actionType(actionType)
+                    .changedBy("het")
+                    .oldValue(preSerializedOldValue)
+                    .newValue(newValueJson)
+                    .build();
+
+            auditLogRepository.save(log);
+            System.out.println("🪵 Audit Ledger updated successfully for action: " + actionType);
+        } catch (Exception e) {
+            System.err.println("⚠️ Could not write to audit ledger: " + e.getMessage());
+        }
+    }
+
+    private String serializeEntity(FeatureFlag flag){
+        try {
+            return objectMapper.writeValueAsString(flag);
+        } catch (Exception e) {
+            return "{\"error\": \"Serialization failed\"}";
+        }
     }
 }
