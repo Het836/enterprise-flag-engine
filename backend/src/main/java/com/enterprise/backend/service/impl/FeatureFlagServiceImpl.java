@@ -9,6 +9,7 @@ import com.enterprise.backend.rules.RuleEvaluator;
 import com.enterprise.backend.service.FeatureFlagCacheService;
 import com.enterprise.backend.service.FeatureFlagService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.annotation.Timed;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
@@ -35,6 +36,10 @@ public class FeatureFlagServiceImpl implements FeatureFlagService {
 
 
     @Override
+    @Timed(value = "flag.evaluations.latency",
+            description = "Latency tracking for SDK rule evaluation",
+            histogram = true) // <--- Place this here
+    @Cacheable(value = "flags", key = "#p0")
     @Transactional(readOnly = true)
     public boolean evaluate(String flagKey, Map<String, Object> userContext) {
         // 1. Fetch the active state configuration of the target flag

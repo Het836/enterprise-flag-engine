@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 2s # Aggressive scrape interval for low-latency feedback
+
+scrape_configs:
+  - job_name: 'spring-boot-backend'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      # If running Spring Boot locally on your host machine, use host.docker.internal
+      # If running Spring Boot inside the same docker network, use your container name
+      - targets: ['host.docker.internal:8080']
