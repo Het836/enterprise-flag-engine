@@ -25,7 +25,10 @@ services:
     container_name: flag_engine_prometheus
     ports:
       - "9090:9090"
-
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Allows container to talk to your local Spring Boot app
   grafana:
     image: grafana/grafana:latest
     container_name: flag_engine_grafana

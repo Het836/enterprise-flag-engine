@@ -31,7 +31,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // 1. Machine Layer (Bypasses human login, relies on API Key Filter)
                         .requestMatchers("/api/v1/sdk/**").permitAll()
-
+                        .requestMatchers("/error").permitAll()
                         // 2. Human Read Layer (Explicitly check for GET)
                         .requestMatchers(HttpMethod.GET, "/api/v1/flags/**").hasAnyRole("VIEWER", "ADMIN")
 
